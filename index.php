@@ -1,7 +1,7 @@
 <?php
 	
-	include 'includes.php';
 	include 'settings.php';
+	include 'includes.php';
 	include 'classes.php';
 
 	Rest::init();

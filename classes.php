@@ -9,7 +9,9 @@
 		static $nomessage = 'Error-Message is empty. Call your developer';
 
 		static function fatal($str){
-			return '<b>FATAL-ERROR, CALL DEVELOPER.</b><br />'.$str;
+			$err = rand();
+			file_put_contents('logs/error_log', $err.' '.$str."\n",FILE_APPEND);
+			return '<b>FATAL-ERROR, CALL DEVELOPER.</b><br />ERROR #'.$err;
 		}
 
 		static function nodata($str){
