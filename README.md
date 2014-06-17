@@ -68,9 +68,9 @@ A modul is your API resource. Add your module in the `module` directory.
 
 ###A modul is included based on the REQUEST_URI
 
-_HTTP://api.yoursite.com/**user**/jhon/_  -> will include the module `user`
+_HTTP://api.yoursite.com/user/jhon/_  -> will include the module `user`
 
-_HTTP://api.yoursite.com/**item**/34/_  -> will include the module `item`
+_HTTP://api.yoursite.com/item/34/_  -> will include the module `item`
 
 ```php
 // GET HTTP://api.yoursite.com/user/jhon/
