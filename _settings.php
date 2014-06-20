@@ -1,6 +1,9 @@
 <?php
-	
+	if(!defined('__ISINCLUDED')) {die('Direct access not permitted');}
 	class Config{
+
+		////////////////////////////
+		//SETTINGS
 
 
 		// use CORS 

@@ -1,5 +1,8 @@
 <?php
-	
+	if(!defined('__ISINCLUDED')) {die('Direct access not permitted');}
+
+
+    /////////////////////////////////////////
 	//include your libraries here
 	
 

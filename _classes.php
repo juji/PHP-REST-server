@@ -1,5 +1,7 @@
 <?php
+	if(!defined('__ISINCLUDED')) {die('Direct access not permitted');}
 
+	
 	class Error{
 		static $url = 'unsupported API URL';
 		static $method = 'unsupported HTTP VERB';
@@ -10,7 +12,7 @@
 
 		static function fatal($str){
 			$err = rand();
-			file_put_contents('logs/error_log', $err.' '.$str."\n",FILE_APPEND);
+			file_put_contents('_logs/error_log', $err.' '.$str."\n",FILE_APPEND);
 			return '<b>FATAL-ERROR, CALL DEVELOPER.</b><br />ERROR #'.$err;
 		}
 
@@ -76,10 +78,10 @@
 			$u = Request::uri();
 			if(!sizeof($u)) Response::error(Error::$url, 404);
 			$f = $u[0];
-			if(file_exists('module/'.$f.'.php')) {
-				include ('module/'.$f.'.php'); return;
-			}else if (file_exists('module/'.$f.'/index.php')){
-				include ('module/'.$f.'/index.php'); return;
+			if(file_exists('_module/'.$f.'.php')) {
+				include ('_module/'.$f.'.php'); return;
+			}else if (file_exists('_module/'.$f.'/index.php')){
+				include ('_module/'.$f.'/index.php'); return;
 			}else{
 				Response::error( Error::modul($f) );
 			}

@@ -1,11 +1,12 @@
 <?php
 	
-	include 'settings.php';
-	include 'includes.php';
-	include 'classes.php';
+	define('__ISINCLUDED', true);
+	include '_settings.php';
+	include '_includes.php';
+	include '_classes.php';
 
 	Rest::init();
-	include 'init.php';
+	include '_init.php';
 	Rest::start();
 
 ?>
