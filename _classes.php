@@ -1,7 +1,7 @@
 <?php
 	if(!defined('__ISINCLUDED')) {die('Direct access not permitted');}
 
-	
+	file_put_contents('asdfa','asdf');
 	class Error{
 		static $url = 'unsupported API URL';
 		static $method = 'unsupported HTTP VERB';
@@ -11,9 +11,7 @@
 		static $nomessage = 'Error-Message is empty. Call your developer';
 
 		static function fatal($str){
-			$err = rand();
-			file_put_contents('_logs/error_log', $err.' '.$str."\n",FILE_APPEND);
-			return '<b>FATAL-ERROR, CALL DEVELOPER.</b><br />ERROR #'.$err;
+			return '<b>FATAL-ERROR, CALL DEVELOPER.</b><br />'.$str;
 		}
 
 		static function nodata($str){
@@ -74,14 +72,13 @@
 		}
 
 		private static function getModule(){
-			
 			$u = Request::uri();
 			if(!sizeof($u)) Response::error(Error::$url, 404);
 			$f = $u[0];
 			if(file_exists('_module/'.$f.'.php')) {
-				include ('_module/'.$f.'.php'); return;
+				include ('_module/'.$f.'.php');
 			}else if (file_exists('_module/'.$f.'/index.php')){
-				include ('_module/'.$f.'/index.php'); return;
+				include ('_module/'.$f.'/index.php');
 			}else{
 				Response::error( Error::modul($f) );
 			}
@@ -102,6 +99,7 @@
 
 		public static function start(){
 
+			
 			set_error_handler(function($no,$str,$file,$line){ 
 				Response::error(Error::fatal($str . '( '.$file.' ['.$line.'] )'), 502); 
 			});
@@ -282,9 +280,9 @@
 			$str = json_encode($str);
 			self::sendHeaders();
 
-			(Request::xhr() && die("<!DOCTYPE HTML>\n".
-				"<html><head><script>".(RestHelper::isCors()?"document.domain='".Request::corsDomain()."';":'').
-				"<script></head><body><div id=\"data\">$str</data></body></html>")) ||  
+			(!Request::xhr() && die("<!DOCTYPE HTML>\n".
+				"<html><head><script>".(Rest::isCors()?"document.domain='".Request::corsDomain()."';":'').
+				"</script></head><body><div id=\"data\">$str</div></body></html>")) ||  
 			die($str);
 		}
 
