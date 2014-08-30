@@ -1,14 +1,13 @@
 <?php
 	if(!defined('__ISINCLUDED')) {die('Direct access not permitted');}
 
-	file_put_contents('asdfa','asdf');
 	class Error{
 		static $url = 'unsupported API URL';
 		static $method = 'unsupported HTTP VERB';
 		static $auth = 'Need to login';
 		static $data = 'Data is empty';
-
 		static $nomessage = 'Error-Message is empty. Call your developer';
+		static $logfile;
 
 		static function fatal($str){
 			return '<b>FATAL-ERROR, CALL DEVELOPER.</b><br />'.$str;
@@ -26,17 +25,31 @@
 			//error reporting
 			error_reporting(E_ALL | E_STRICT);
 
+			if(Config::$LOG_FILE){
+				self::$logfile = fopen(Config::$LOG_FILE,'ab');
+			}
+
 			ob_start(function($out){
+
+				$b = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, Config::$BACKTRACE_LIMIT);
 				$e = error_get_last();
-				if(!empty($e)) {
-					
+
+				if(!empty($e['message'])) {
+					$st = $e['message']."\n( ".$e['file'].' ['.$e['line']."] )\n";
+					foreach ($b as $key => $v) {
+						$st .= '  '.$v['file'].' ['.$v['line']."]; function: ".$v['function']."\n";
+					}
+					$st .= "\n";
+					if(Config::$LOG_FILE) {fwrite(Error::$logfile, $st);fclose(Error::$logfile);}
+					if(Config::$ERROR_EMAIL) mail(Config::$ERROR_EMAIL, Config::$ERROR_EMAIL_SUBJECT, $st,
+													'From: api-system@'.$_SERVER['HTTP_HOST']);
+
 					Response::setStatus(502);
 					Response::sendHeaders();
-					return '{"status":false,"message":"'.
-							Error::fatal($e['message'] . ' ( ' . 
-							$e['file'] . ' [' . $e['line'] .'] )').
-							'"}';
+					return Response::create(array('status'=>false,'message'=>Config::$ERROR_MSSG));
+
 				}
+
 				return $out;
 			});
 
@@ -80,7 +93,7 @@
 			}else if (file_exists('_module/'.$f.'/index.php')){
 				include ('_module/'.$f.'/index.php');
 			}else{
-				Response::error( Error::modul($f) );
+				Response::error( Error::modul($f), 404 );
 			}
 
 		}
@@ -99,20 +112,10 @@
 
 		public static function start(){
 
-			
-			set_error_handler(function($no,$str,$file,$line){ 
-				Response::error(Error::fatal($str . '( '.$file.' ['.$line.'] )'), 502); 
-			});
+			self::getModule();
+			Router::notfound(function(){ Response::error(Error::$url, 404); });
+			Router::start();
 
-			try{
-
-				self::getModule();
-				Router::finally(function(){ Response::error(Error::$url, 404); });
-				Router::start();
-
-			}catch(Exception $e){
-				Response::error( $e->getMessage(), 502 );
-			}
 		}
 
 
@@ -203,7 +206,7 @@
 			//uri, in array
 			self::$q = $_SERVER['QUERY_STRING'];
 			self::$u = preg_replace('/\?.*/', '', $_SERVER['REQUEST_URI']);
-			self::$u = preg_replace('`'.Rest::root().'`', '', self::$u);
+			self::$u = preg_replace('`^'.preg_quote(Rest::root()).'`', '', self::$u);
 			self::$u = preg_replace('`/+`', '/', self::$u);
 			self::$u = preg_replace('`/$`', '', self::$u);
 			self::$u = preg_replace('`^/`', '', self::$u);
@@ -270,20 +273,15 @@
 
 		}
 
-		private static function send($str){
+		private static function send($data){
+			if(!is_array($data)) throw new Exception('API response should return JSON');
+			if(!isset($data['status'])) throw new Exception('API response status unknown');
+			if(!isset($data['message'])) throw new Exception('API response message unknown');
+			$str = self::create($data);
 			
-			if(!is_array($str)) throw new Exception('API response should return JSON');
-			if(!isset($str['status'])) throw new Exception('API response status unknown');
-			if(!isset($str['message'])) throw new Exception('API response message unknown');
-			
-
-			$str = json_encode($str);
 			self::sendHeaders();
-
-			(!Request::xhr() && die("<!DOCTYPE HTML>\n".
-				"<html><head><script>".(Rest::isCors()?"document.domain='".Request::corsDomain()."';":'').
-				"</script></head><body><div id=\"data\">$str</div></body></html>")) ||  
 			die($str);
+
 		}
 
 		public static function ok($str=true){
@@ -295,6 +293,14 @@
 			$str = $str ? $str : Error::$nomessage;
 			self::send(array('status'=>false,'message'=>$str));
 		}
+
+		public static function create($json){
+			$json = json_encode($json);
+			if(Request::xhr()) return $json;
+			return "<!DOCTYPE HTML>\n".
+				"<html><head><script>".(Rest::isCors()?"document.domain='".Request::corsDomain()."';":'').
+				"</script></head><body><div id=\"".Config::$HTMLELEMENT_ID."\">$json</div></body></html>";
+		}
 	}
 
 
@@ -304,28 +310,21 @@
 		public static $routes;
 		public static $base;
 		public static $notfound;
-
-		// init( $base )  						// initialize with current dir.
-		// add( $protocol, uri, cllback )
-		// add( uri, callback ) 				// default protocol is get
-		// finally ( callback ) 				// 404 error
-		// start() 								// start reading request
+		
 
 		public static function init($base=''){
 			self::$routes = array();
-			self::$base = preg_replace('/\/+/','/','/'. preg_replace('`/$`','',preg_replace('`^/`','',$base)) . '/');
+			self::$base = preg_replace('/\/+/','/', '/'. preg_replace('`/$`','',preg_replace('`^/`','',$base)) . '/');
 			if(self::$base=='/') self::$base = self::getDir();
 		}
 
 
 		private static function getDir(){
-			$r = preg_replace('/\/+/','/', '/' . str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', realpath(getcwd())) . '/');	
-			$r = preg_replace('`\\\`','/',$r);
-			return $r;
+			return preg_replace('/\/+/','/',str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', getcwd()) . '/');
 		}
 
 
-		public static function finally($c){
+		public static function notfound($c){
 			if(!is_callable($c))
 			throw new Exception('Router error: Need a callable to respond a route');
 			self::$notfound = $c;
@@ -378,7 +377,7 @@
 			if(isset($_GET['_method'])) $method = self::$clean($_GET['_method']);
 			if(isset($_POST['_method'])) $method = self::$clean($_POST['_method']);
 
-			$path = preg_replace('`'.preg_quote(self::$base).'`','',preg_replace('`\?.*$`','',$_SERVER['REQUEST_URI']));
+			$path = preg_replace('`^'.preg_quote(self::$base).'`','',preg_replace('`\?.*$`','',$_SERVER['REQUEST_URI']));
 			$path = preg_replace('`/+$`','',$path);
 
 			$__arr = array();
