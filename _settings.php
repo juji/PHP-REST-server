@@ -8,39 +8,39 @@
 
 		// use CORS 
 		// http://en.wikipedia.org/wiki/Cross-origin_resource_sharing
-		static $CORS = false;
+		static $CORS = true;
 
 		// allowed domain
-		// rejected domain
-		// * means all, always allow
-		// if you wan't to reject all cors request, set $CORS instead
+		// '*' means allow for all
 		static $CORS_ALLOW = '*';
-		static $CORS_REJECT = '*';
 
 		// CORS allowed method
-		static $CORS_METHOD = 'GET, POST, PUT, DELETE';
+		static $CORS_METHODS = 'GET, POST, PUT, DELETE, OPTIONS, HEAD';
 
 		// CORS allowed header
-		static $CORS_HEADERS = 'X-requested-with';
+		static $CORS_HEADERS = 'X-Requested-With, Origin, X-CSRFToken, Content-Type, Accept';
 
+		// Root directory of API endpoint
+		// example: 
+		// http://www.sample.com/api/v3 -> '/api/v3/'
+		// http://api.sample.com/ -> '/'
+		static $ROOT_DIR = '/api/';
 
-		//error handling	
-		static $LOG_FILE = './api.error.log';				// if falsy, will not write error log
-		static $ERROR_EMAIL = '';							// if falsy, will not send error message
-		static $ERROR_EMAIL_SUBJECT = 'PHP-API-error';
+		// Error handling
+		static $ERROR_EMAIL = false;
+		static $ERROR_EMAIL_SUBJECT = 'API error';
+
+		// generic error message
+		// leave blank to send system error text to client
+		static $ERROR_MSSG = '';
 		static $BACKTRACE_LIMIT = 5;
 
-		// HTML ELEMENT ID
-		// when request is sent without 'X-requested-with: XmlHttpRequest' header ( iframe )
-		// some ISP messed up contents by injecting scripts,
-		// so content-type 'text/plain' or 'application/json' is out of the question.
-		// To overcome this, enclose JSON data inside html element with an 'id' attribute,
-		// and fetch data inside that ID instead.
-		// I.e. JSON.parse( iframeDocument.getElementById('data').innerHTML );
+		static $CONTENT_TYPE = '';
+
+		// encapsulate data for an html response in html tag
+		// ISPs just love to inject scripts
 		static $HTMLELEMENT_ID = 'data';
 
-		//Generic error message
-		static $ERROR_MSSG = 'Sorry, something went bad..';
 
 	}
 

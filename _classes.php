@@ -25,28 +25,29 @@
 			//error reporting
 			error_reporting(E_ALL | E_STRICT);
 
-			if(Config::$LOG_FILE){
-				self::$logfile = fopen(Config::$LOG_FILE,'ab');
-			}
-
 			ob_start(function($out){
 
 				$b = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, Config::$BACKTRACE_LIMIT);
 				$e = error_get_last();
 
+
 				if(!empty($e['message'])) {
-					$st = $e['message']."\n( ".$e['file'].' ['.$e['line']."] )\n";
+					
+					if(Config::$LOG_FILE){ Error::$logfile = fopen(Config::$LOG_FILE,'ab'); }
+
+					$st = "<br /><b>".$e['message']."</b><br />( ".$e['file'].' ['.$e['line']."] )<br />";
 					foreach ($b as $key => $v) {
-						$st .= '  '.$v['file'].' ['.$v['line']."]; function: ".$v['function']."\n";
+						$st .= '  '.$v['file'].' ['.$v['line']."]; function: ".$v['function']."<br />";
 					}
-					$st .= "\n";
-					if(Config::$LOG_FILE) {fwrite(Error::$logfile, $st);fclose(Error::$logfile);}
+					$st .= "<br />";
+					
 					if(Config::$ERROR_EMAIL) mail(Config::$ERROR_EMAIL, Config::$ERROR_EMAIL_SUBJECT, $st,
 													'From: api-system@'.$_SERVER['HTTP_HOST']);
 
 					Response::setStatus(502);
 					Response::sendHeaders();
-					return Response::create(array('status'=>false,'message'=>Config::$ERROR_MSSG));
+					
+					return Response::create(array('status'=>false,'message'=>Config::$ERROR_MSSG?Config::$ERROR_MSSG:$st));
 
 				}
 
@@ -69,15 +70,10 @@
 		// root() rootDir String
 
 		static function isCors(){
-			return Config::$CORS && Request::origin() &&
-
+			return Config::$CORS && Request::origin()/* &&
 			(Config::$CORS_ALLOW == '*' || 
-			(sizeof(Config::$CORS_ALLOW) && is_array(Config::$CORS_ALLOWED) && 
-			in_array(Request::originDomain(),Config::$CORS_ALLOW))) &&
-
-			(!Config::$CORS_REJECT == '*' || 
-			(sizeof(Config::$CORS_REJECT) && is_array(Config::$CORS_REJECT) && 
-			!in_array(Request::originDomain(),Config::$CORS_REJECT)));
+			(sizeof(Config::$CORS_ALLOW) && is_array(Config::$CORS_ALLOW) && 
+			in_array(Request::originDomain(),Config::$CORS_ALLOW)))*/;
 		}
 
 		public static function root(){
@@ -103,10 +99,14 @@
 			Error::init();
 
 			//init all
-			self::$rootdir = preg_replace('/\/+/','/', '/' . str_replace(realpath($_SERVER['DOCUMENT_ROOT']), '', realpath(getcwd())) . '/');
-			self::$rootdir = preg_replace('`\\\`', '/', self::$rootdir);
+			self::$rootdir = Config::$ROOT_DIR;
 			Request::init();
-			Router::init();
+			//check CORS
+			if(Config::$CORS && Config::$CORS_ALLOW!='*'&&!self::isCors()){
+				die('Not CORS');
+			}
+
+			Router::init(self::$rootdir);
 			
 		}
 
@@ -115,6 +115,12 @@
 			self::getModule();
 			Router::notfound(function(){ Response::error(Error::$url, 404); });
 			Router::start();
+
+			// set OPTIONS response for CORS
+			if(Config::$CORS) Router::add('options','*',function(){
+				Response::sendHeaders();
+				die();
+			});
 
 		}
 
@@ -163,6 +169,9 @@
 
 		static function init(){
 			$method = strtolower($_SERVER['REQUEST_METHOD']);
+
+			//get method
+			self::$m = $method;
 			
 			//get data
 			if ($method == "put" || $method == "delete") {
@@ -184,18 +193,19 @@
 			
 			//clean data
 			self::$d = self::clean(self::$d);
-			//add $_PUT and $_DELETE, cleaan $_GET aand $_POST
-			if ($method == "put") $_PUT = self::$d;
-			if ($method == "delete") $_DELETE = self::$d;
-			if ($method == "get") $_GET = self::$d;
-			if ($method == "post") $_POST = self::$d;
 
-			//get method
-			self::$m = $method;
+			//add $_PUT and $_DELETE, cleaan $_GET aand $_POST
+			if ($method == "put") $GLOBALS['_PUT'] = self::$d;
+			if ($method == "delete") $GLOBALS['_DELETE'] = self::$d;
+			if ($method == "get") $GLOBALS['_GET'] = self::$d;
+			if ($method == "post") $GLOBALS['_POST'] = self::$d;
 
 			//is xhr?
 			self::$x = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
 						strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
+			// just a hack to show exmaple
+			// self::$x = true;
 
 			// get origin
 			self::$o = isset($_SERVER['HTTP_ORIGIN']) &&  $_SERVER['HTTP_ORIGIN'] ? $_SERVER['HTTP_ORIGIN'] : false;
@@ -206,7 +216,7 @@
 			//uri, in array
 			self::$q = $_SERVER['QUERY_STRING'];
 			self::$u = preg_replace('/\?.*/', '', $_SERVER['REQUEST_URI']);
-			self::$u = preg_replace('`^'.preg_quote(Rest::root()).'`', '', self::$u);
+			self::$u = str_replace(Rest::root(), '', self::$u);
 			self::$u = preg_replace('`/+`', '/', self::$u);
 			self::$u = preg_replace('`/$`', '', self::$u);
 			self::$u = preg_replace('`^/`', '', self::$u);
@@ -259,7 +269,7 @@
 			// CORS
     		if (Rest::isCors()) {
     		    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-    		    header("Access-Control-Allow-Methods: " . Config::$CORS_METHOD);
+    		    header("Access-Control-Allow-Methods: " . Config::$CORS_METHODS);
     		    header("Access-Control-Allow-Headers: " . Config::$CORS_HEADERS);
     		    header("Access-Control-Allow-Credentials: true");
     		}
@@ -278,8 +288,12 @@
 			if(!isset($data['status'])) throw new Exception('API response status unknown');
 			if(!isset($data['message'])) throw new Exception('API response message unknown');
 			$str = self::create($data);
-			
+
 			self::sendHeaders();
+			if(Request::method()=='head'){
+				header('Content-Length: '.strlen($str));
+				die();
+			}
 			die($str);
 
 		}
@@ -298,7 +312,7 @@
 			$json = json_encode($json);
 			if(Request::xhr()) return $json;
 			return "<!DOCTYPE HTML>\n".
-				"<html><head><script>".(Rest::isCors()?"document.domain='".Request::corsDomain()."';":'').
+				"<html><head><script>".(Rest::isCors()?"document.domain='".Request::originDomain()."';":'').
 				"</script></head><body><div id=\"".Config::$HTMLELEMENT_ID."\">$json</div></body></html>";
 		}
 	}
@@ -374,8 +388,8 @@
 			
 			$method = strtolower($_SERVER['REQUEST_METHOD']);
 
-			if(isset($_GET['_method'])) $method = self::$clean($_GET['_method']);
-			if(isset($_POST['_method'])) $method = self::$clean($_POST['_method']);
+			if(!empty($_GET['_method'])) $method = self::$clean($_GET['_method']);
+			if(!empty($_POST['_method'])) $method = self::$clean($_POST['_method']);
 
 			$path = preg_replace('`^'.preg_quote(self::$base).'`','',preg_replace('`\?.*$`','',$_SERVER['REQUEST_URI']));
 			$path = preg_replace('`/+$`','',$path);
@@ -391,6 +405,7 @@
 				if($v[0]!=$method) continue;
 				
 				$r = preg_replace('/\:[^\/\*]+\*/','(.*?)',$v[1]);
+				$r = preg_replace('/\*/','(.*?)',$v[1]);
 				$r = preg_replace('/\:[^\/]+/','([^\/]+)',$r);
 				if(!preg_match_all('`^'.$r.'$`',$path,$pat)) continue;
 
