@@ -48,6 +48,7 @@ Set the variables in `_settings.php`. Below are all the settings and it's defaul
 
 ```
 // use CORS 
+// http://en.wikipedia.org/wiki/Cross-origin_resource_sharing
 static $CORS = true;
 
 // allowed domain
@@ -75,6 +76,14 @@ static $ERROR_EMAIL_SUBJECT = 'API error';
 static $ERROR_MSSG = '';
 static $BACKTRACE_LIMIT = 5;
 
+// auto Content-Type:
+// if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') return 'application/json'
+// else return 'text/html'
+//
+// leave blank for auto Content-Type
+// possible values:
+// - json
+// - html
 static $CONTENT_TYPE = '';
 
 // encapsulate data for an html response in html tag
