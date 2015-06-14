@@ -35,7 +35,8 @@
 		static $ERROR_MSSG = '';
 		static $BACKTRACE_LIMIT = 5;
 
-		static $CONTENT_TYPE = '';
+		// leave blank for auto Content-Type
+		// static $CONTENT_TYPE = '';
 
 		// encapsulate data for an html response in html tag
 		// ISPs just love to inject scripts
