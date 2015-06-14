@@ -24,7 +24,7 @@
 		// example: 
 		// http://www.sample.com/api/v3 -> '/api/v3/'
 		// http://api.sample.com/ -> '/'
-		static $ROOT_DIR = '/works/casetify/api/';
+		static $ROOT_DIR = '/api/';
 
 		// Error handling
 		static $ERROR_EMAIL = false;
@@ -35,8 +35,15 @@
 		static $ERROR_MSSG = '';
 		static $BACKTRACE_LIMIT = 5;
 
+		// auto Content-Type:
+		// if (strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') return 'application/json'
+		// else return 'text/html'
+		//
 		// leave blank for auto Content-Type
-		// static $CONTENT_TYPE = '';
+		// possible values:
+		// - json
+		// - html
+		static $CONTENT_TYPE = '';
 
 		// encapsulate data for an html response in html tag
 		// ISPs just love to inject scripts

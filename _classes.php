@@ -204,11 +204,14 @@
 			if ($method == "post") $GLOBALS['_POST'] = self::$d;
 
 			//is xhr?
-			self::$x = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-						strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+			self::$x = (
+				isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+				strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest'
+			) || (
+				!empty(Config::$CONTENT_TYPE) &&
+				Config::$CONTENT_TYPE == 'json'
+			);
 
-			// just a hack to show exmaple
-			// self::$x = true;
 
 			// get origin
 			self::$o = isset($_SERVER['HTTP_ORIGIN']) &&  $_SERVER['HTTP_ORIGIN'] ? $_SERVER['HTTP_ORIGIN'] : false;
