@@ -9,6 +9,7 @@
 	include '_classes.php';
 
 	Rest::init();
+
 	include '_init.php';
 	Rest::start();
 

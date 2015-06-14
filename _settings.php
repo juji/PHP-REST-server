@@ -24,7 +24,7 @@
 		// example: 
 		// http://www.sample.com/api/v3 -> '/api/v3/'
 		// http://api.sample.com/ -> '/'
-		static $ROOT_DIR = '/api/';
+		static $ROOT_DIR = '/works/casetify/api/';
 
 		// Error handling
 		static $ERROR_EMAIL = false;

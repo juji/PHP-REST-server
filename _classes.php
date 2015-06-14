@@ -70,10 +70,10 @@
 		// root() rootDir String
 
 		static function isCors(){
-			return Config::$CORS && Request::origin()/* &&
+			return Config::$CORS && Request::origin() &&
 			(Config::$CORS_ALLOW == '*' || 
 			(sizeof(Config::$CORS_ALLOW) && is_array(Config::$CORS_ALLOW) && 
-			in_array(Request::originDomain(),Config::$CORS_ALLOW)))*/;
+			in_array(Request::originDomain(),Config::$CORS_ALLOW)));
 		}
 
 		public static function root(){
@@ -107,6 +107,12 @@
 			}
 
 			Router::init(self::$rootdir);
+
+			// set OPTIONS response for CORS
+			if(Config::$CORS && self::isCors()) Router::add('options','*',function(){
+				Response::sendHeaders();
+				die();
+			});
 			
 		}
 
@@ -117,10 +123,7 @@
 			Router::start();
 
 			// set OPTIONS response for CORS
-			if(Config::$CORS) Router::add('options','*',function(){
-				Response::sendHeaders();
-				die();
-			});
+			
 
 		}
 
@@ -192,7 +195,7 @@
 			}
 			
 			//clean data
-			self::$d = self::clean(self::$d);
+			if(!empty(self::$d)) self::$d = self::clean(self::$d);
 
 			//add $_PUT and $_DELETE, cleaan $_GET aand $_POST
 			if ($method == "put") $GLOBALS['_PUT'] = self::$d;
